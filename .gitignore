@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-ssr
+*.local
+
+# エディタ
+.vscode/*
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ログ
+npm-debug.log*

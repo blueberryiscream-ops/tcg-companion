@@ -1,0 +1,38 @@
+@import 'tailwindcss';
+
+/* ダークモード標準（対戦卓は暗いことが多い）。DESIGN.md §4 */
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #0b0f17;
+  color: #e5e9f0;
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Hiragino Kaku Gothic ProN',
+    'Noto Sans JP', sans-serif;
+  /* 会場での親指操作：長押し時の選択・コンテキストメニューを抑制 */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+
+/* ボタンの誤タップ時のハイライトを消す */
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* プルダウンを開いたときの選択肢が「白背景＋白文字」で見えなくなるのを防ぐ。
+   選択肢リストに明示的に暗い背景と明るい文字色を指定する。 */
+select option {
+  background-color: #131a28;
+  color: #e5e9f0;
+}
