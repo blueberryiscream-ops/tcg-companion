@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db/db'
 import { BottomTabs, type TabKey } from './components/BottomTabs'
@@ -6,6 +7,8 @@ import { LiveScreen } from './screens/LiveScreen'
 import { RecordsScreen } from './screens/RecordsScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { UiPrefsProvider } from './lib/uiPrefs'
+import { DEFAULT_ACCENT } from './lib/color'
+import { loadLiveSession } from './live/liveSession'
 
 export function App() {
   const [tab, setTab] = useState<TabKey>('live')
@@ -13,20 +16,30 @@ export function App() {
   // IndexedDB のプロファイル一覧をリアクティブに読む（変わると自動再描画）。
   const profiles = useLiveQuery(() => db.profiles.toArray(), [])
 
-  // 現在選んでいるゲームプロファイル。初期は未選択。
-  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
+  // 現在選んでいるゲームプロファイル。対戦の途中で端末に保存されたセッションがあれば、
+  // 再読み込み後も同じゲームの画面に自動で戻す（スマホでアプリを切り替えた後の対策）。
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
+    () => loadLiveSession()?.profileId ?? null,
+  )
+
+  // ゲーム別テーマ（DESIGN.md §8-1）: 選んでいるプロファイルのアクセント色を
+  // CSS変数 --accent としてアプリ全体に配る。子要素は bg-[var(--accent)] 等で参照する。
+  const selectedProfile = (profiles ?? []).find((p) => p.id === selectedProfileId) ?? null
+  const accentColor = selectedProfile?.accentColor ?? DEFAULT_ACCENT
+  const themeStyle = { '--accent': accentColor } as CSSProperties
 
   // 3画面は常にマウントしたまま、表示だけ切り替える。
   // こうすると「記録」「設定」に一瞬移動しても、対戦中のライフ・マリガン等が消えない。
   return (
     <UiPrefsProvider>
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col" style={themeStyle}>
         <main className="relative min-h-0 flex-1">
           <TabPanel active={tab === 'live'}>
             <LiveScreen
               profiles={profiles ?? []}
               selectedProfileId={selectedProfileId}
               onSelectProfile={setSelectedProfileId}
+              isActiveTab={tab === 'live'}
             />
           </TabPanel>
           <TabPanel active={tab === 'records'} scroll>

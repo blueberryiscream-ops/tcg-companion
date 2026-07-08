@@ -47,7 +47,7 @@ export function DiceRoller({ defaults }: { defaults: DieType[] }) {
             onClick={() => setDie(d)}
             className={
               'rounded-lg py-3 text-base font-semibold ' +
-              (d === die ? 'bg-sky-500 text-white' : 'bg-white/10 text-slate-200 active:bg-white/20')
+              (d === die ? 'bg-[var(--accent)] text-white' : 'bg-white/10 text-slate-200 active:bg-white/20')
             }
           >
             {d}
@@ -75,7 +75,7 @@ export function DiceRoller({ defaults }: { defaults: DieType[] }) {
 
       <button
         onClick={roll}
-        className="rounded-xl bg-sky-500 py-5 text-2xl font-bold text-white active:bg-sky-400"
+        className="rounded-xl bg-[var(--accent)] py-5 text-2xl font-bold text-white active:opacity-80"
       >
         {count}{die} を振る
       </button>
@@ -83,7 +83,7 @@ export function DiceRoller({ defaults }: { defaults: DieType[] }) {
       {/* 直近の結果 */}
       {last && (
         <div className="rounded-xl bg-white/5 p-3 text-center">
-          <div className="text-5xl font-bold tabular-nums text-sky-300">{last.total}</div>
+          <div className="text-5xl font-bold tabular-nums text-[var(--accent)]">{last.total}</div>
           {last.count > 1 && (
             <div className="mt-1 text-sm text-slate-400">
               内訳: {last.rolls.join(' + ')}

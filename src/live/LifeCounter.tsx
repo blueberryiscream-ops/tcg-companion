@@ -66,8 +66,10 @@ export function LifeCounter({
       className="flex h-full w-full flex-col rounded-2xl bg-white/5 p-1.5"
       style={{ transform: flipped ? 'rotate(180deg)' : undefined }}
     >
-      {/* ヘッダー：名前を中央に、右肩に向き反転ボタン */}
-      <div className="relative shrink-0">
+      {/* ヘッダー：名前を中央に、右肩に向き反転ボタン。
+          名前を隠していても⇅ボタンの場所を確保するため最小の高さを固定しておく
+          （absolute配置のボタンだけになって高さ0になり下の要素と重なるのを防ぐ）。 */}
+      <div className="relative min-h-[1.4rem] shrink-0">
         {!hideName && <div className="text-center text-sm text-slate-400">{player.name}</div>}
         <button
           onClick={onToggleFlip}
@@ -93,23 +95,33 @@ export function LifeCounter({
       </div>
 
       {/* ±5/±10 の分かりやすいチップ（長押しが分からなくてもここで押せる） */}
-      <div className="mt-1 flex shrink-0 justify-center gap-1.5">
+      <div className={'flex shrink-0 justify-center ' + (compact ? 'mt-0.5 gap-1' : 'mt-1 gap-1.5')}>
         {[-10, -5, 5, 10].map((d) => (
           <button
             key={d}
             onClick={() => onChangeLife(d)}
-            className="flex-1 rounded-lg bg-white/10 py-2 text-base font-semibold text-slate-200 active:bg-white/25"
+            className={
+              'flex-1 rounded-lg bg-white/10 font-semibold text-slate-200 active:bg-white/25 ' +
+              (compact ? 'py-1 text-xs' : 'py-2 text-base')
+            }
           >
             {d > 0 ? `＋${d}` : `−${-d}`}
           </button>
         ))}
       </div>
 
-      {/* 統率者ダメージ（EDH）。各相手からの被ダメを+/-。ライフも連動して減る。 */}
+      {/* 統率者ダメージ（EDH）。各相手からの被ダメを+/-。ライフも連動して減る。
+          compact時は見出し・余白・文字を大きく詰めて、狭い画面でのゴチャつきを防ぐ。 */}
       {supportsCommanderDamage && others.length > 0 && (
-        <div className="mt-1 shrink-0 border-t border-white/10 pt-1">
-          <div className="mb-1 text-xs text-slate-400">統率者ダメージ（相手別）</div>
-          <div className="flex flex-wrap gap-1.5">
+        <div
+          className={
+            'shrink-0 border-t border-white/10 ' + (compact ? 'mt-0.5 pt-0.5' : 'mt-1 pt-1')
+          }
+        >
+          <div className={compact ? 'text-[9px] text-slate-500' : 'mb-1 text-xs text-slate-400'}>
+            統率者ダメージ
+          </div>
+          <div className={'flex flex-wrap ' + (compact ? 'gap-1' : 'gap-1.5')}>
             {others.map((o) => {
               const dmg = player.commanderDamage[o.id] ?? 0
               const lethal = dmg >= 21
@@ -117,21 +129,31 @@ export function LifeCounter({
                 <div
                   key={o.id}
                   className={
-                    'flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm ' +
+                    'flex items-center rounded-lg ' +
+                    (compact ? 'gap-0.5 px-1 py-0.5 text-xs' : 'gap-1 px-2 py-1.5 text-sm') +
+                    ' ' +
                     (lethal ? 'bg-red-500/30 text-red-200' : 'bg-white/10 text-slate-200')
                   }
                 >
-                  <span className="text-xs text-slate-400">{o.name}</span>
+                  <span className={compact ? 'text-[9px] text-slate-400' : 'text-xs text-slate-400'}>
+                    {o.name}
+                  </span>
                   <button
                     onClick={() => onCommanderDamage(o.id, -1)}
-                    className="px-2 text-lg leading-none active:opacity-60"
+                    className={
+                      'leading-none active:opacity-60 ' + (compact ? 'px-1' : 'px-2 text-lg')
+                    }
                   >
                     −
                   </button>
-                  <span className="w-5 text-center tabular-nums">{dmg}</span>
+                  <span className={'text-center tabular-nums ' + (compact ? 'w-4' : 'w-5')}>
+                    {dmg}
+                  </span>
                   <button
                     onClick={() => onCommanderDamage(o.id, 1)}
-                    className="px-2 text-lg leading-none active:opacity-60"
+                    className={
+                      'leading-none active:opacity-60 ' + (compact ? 'px-1' : 'px-2 text-lg')
+                    }
                   >
                     ＋
                   </button>

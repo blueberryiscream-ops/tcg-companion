@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GameProfile, LifeEvent } from '../db/types'
 import { newId, nowIso } from '../lib/id'
 
@@ -39,19 +39,37 @@ function freshBoard(count: number, startingLife: number): Board {
 }
 
 // 盤面 + Undo（直前操作を戻す）。DESIGN.md フェーズ1。
-export function useBoard(profile: GameProfile | null, playerCount: number) {
+// restored: スマホでアプリが裏で再読み込みされた後などに、直前の対戦を復元するための情報（任意）。
+// profileIdはselectedProfileId由来の確実な値（profilesの非同期読み込みを待たなくてよい）。
+export function useBoard(
+  profile: GameProfile | null,
+  playerCount: number,
+  restored?: { profileId: string; board: Board } | null,
+) {
   const startingLife = profile?.startingLife ?? 20
 
-  const [board, setBoard] = useState<Board>(() => freshBoard(playerCount, startingLife))
+  const [board, setBoard] = useState<Board>(
+    () => restored?.board ?? freshBoard(playerCount, startingLife),
+  )
   const [undoStack, setUndoStack] = useState<Board[]>([])
 
-  // プロファイルや人数が変わったら新しいゲームとして作り直す。
+  // プロファイルや人数が「実際に変わったとき」だけ新しいゲームとして作り直す。
+  // 注意: profilesの読み込みが非同期のため、マウント直後は一瞬 profile が null になる
+  // （selectedProfileIdは復元済みでも profiles 配列がまだ空）。この間にキーが変化したと
+  // 誤判定してリセットしないよう、基準点は「復元データがあればそのキー、無ければnull」から
+  // 始める（profile.idを使わない＝読み込みタイミングに左右されない）。
+  const sessionKey = profile ? `${profile.id}:${playerCount}` : null
+  const prevSessionKey = useRef<string | null>(
+    restored ? `${restored.profileId}:${playerCount}` : null,
+  )
   useEffect(() => {
+    if (sessionKey === null) return
+    if (prevSessionKey.current === sessionKey) return
+    prevSessionKey.current = sessionKey
     setBoard(freshBoard(playerCount, startingLife))
     setUndoStack([])
-    // profile.id と playerCount の変化で作り直す
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.id, playerCount, startingLife])
+  }, [sessionKey, playerCount, startingLife])
 
   // 盤面を書き換える共通口。書き換え前を Undo スタックに積む。
   function mutate(recipe: (draft: Board) => void) {

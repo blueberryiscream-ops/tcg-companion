@@ -82,7 +82,7 @@ function SortableChip({
 export function EditableChipGrid({
   items,
   selectedIds = [],
-  selectedClassName = 'bg-sky-500 text-white',
+  selectedClassName = 'bg-[var(--accent)] text-white',
   onToggleSelect,
   onAdd,
   onRename,
@@ -143,9 +143,12 @@ export function EditableChipGrid({
         <button
           type="button"
           onClick={() => setEditMode((v) => !v)}
-          className="rounded-lg bg-white/10 px-2.5 py-1 text-xs text-slate-300 active:bg-white/20"
+          className={
+            'rounded px-1.5 py-0.5 text-xs underline decoration-dotted underline-offset-2 ' +
+            (editMode ? 'text-emerald-400' : 'text-slate-500 active:text-slate-300')
+          }
         >
-          {editMode ? '✅ 完了' : '✏️ 並び替え・編集'}
+          {editMode ? '完了' : '編集'}
         </button>
       </div>
 

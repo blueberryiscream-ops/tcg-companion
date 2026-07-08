@@ -20,7 +20,7 @@ export function DeckPicker({
   async function handleDelete(id: string) {
     const deck = decks.find((d) => d.id === id)
     const ok = window.confirm(
-      `「${deck?.name ?? ''}」を削除しますか？\n過去の記録の対戦相手表示には出せなくなります（記録自体は残ります）。`,
+      `「${deck?.name ?? ''}」を削除しますか？\n⚠️ このデッキを使った過去の対戦記録からも表示が消えます（記録データ自体は消えません）。`,
     )
     if (ok) await deleteDeck(id)
   }

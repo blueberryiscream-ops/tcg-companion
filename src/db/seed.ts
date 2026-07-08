@@ -17,6 +17,7 @@ export const BUILT_IN_PROFILES: GameProfile[] = [
     ],
     diceDefaults: ['d6', 'd20'],
     isBuiltIn: true,
+    accentColor: '#38bdf8', // sky
   },
   {
     id: 'builtin-mtg-edh',
@@ -30,6 +31,7 @@ export const BUILT_IN_PROFILES: GameProfile[] = [
     ],
     diceDefaults: ['d6', 'd20'],
     isBuiltIn: true,
+    accentColor: '#a78bfa', // violet
   },
   {
     id: 'builtin-holoca',
@@ -44,5 +46,6 @@ export const BUILT_IN_PROFILES: GameProfile[] = [
     ],
     diceDefaults: ['d6'],
     isBuiltIn: true,
+    accentColor: '#f472b6', // pink
   },
 ]

@@ -9,6 +9,7 @@ export interface UiPrefs {
   showOpponentPlayer: boolean
   showNote: boolean
   compactLiveScreen: boolean // 操作に慣れた人向け：文字ラベルを消してアイコンだけにする
+  wakeLockEnabled: boolean // 対戦中に画面を自動消灯させない（Wake Lock）。既定オフ。
 }
 
 const DEFAULT_PREFS: UiPrefs = {
@@ -18,6 +19,7 @@ const DEFAULT_PREFS: UiPrefs = {
   showOpponentPlayer: true,
   showNote: true,
   compactLiveScreen: false,
+  wakeLockEnabled: false,
 }
 
 const STORAGE_KEY = 'tcg-companion:ui-prefs'

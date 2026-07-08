@@ -90,7 +90,7 @@ export function RecordsScreen({
   if (!profile) {
     return (
       <div className="p-4">
-        <h1 className="mb-1 text-2xl font-bold">記録</h1>
+        <h1 className="mb-1 text-2xl font-bold tracking-tight">記録</h1>
         <p className="text-sm text-slate-400">先に「対戦」タブでゲームを選んでください。</p>
       </div>
     )
@@ -125,7 +125,7 @@ export function RecordsScreen({
 
   return (
     <div className="p-4">
-      <h1 className="mb-1 text-2xl font-bold">記録</h1>
+      <h1 className="mb-1 text-2xl font-bold tracking-tight">記録</h1>
       <p className="mb-3 text-sm text-slate-400">{profile.name} の対戦</p>
 
       {/* フィルタ（設定タブで表示をオフにした項目は出さない） */}
@@ -243,7 +243,7 @@ export function RecordsScreen({
         <div className="mb-3 rounded-xl bg-white/5 p-3">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-3xl font-bold tabular-nums text-sky-300">{pct(overall.winRate)}</div>
+              <div className="text-3xl font-bold tabular-nums text-[var(--accent)]">{pct(overall.winRate)}</div>
               <div className="text-xs text-slate-400">
                 {overall.total}戦 {overall.wins}勝{overall.losses}敗{overall.draws}分
               </div>

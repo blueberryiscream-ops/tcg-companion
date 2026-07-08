@@ -140,7 +140,7 @@ export function MatchSetupForm({
                 onClick={() => setFormat(f)}
                 className={
                   'flex-1 rounded-lg py-2 text-sm font-semibold ' +
-                  (format === f ? 'bg-sky-500 text-white' : 'bg-white/10 text-slate-200')
+                  (format === f ? 'bg-[var(--accent)] text-white' : 'bg-white/10 text-slate-200')
                 }
               >
                 {f}
@@ -151,15 +151,6 @@ export function MatchSetupForm({
       )}
 
       {prefs.showTags && <TagPicker profileId={profile.id} selected={tags} onChange={setTags} />}
-
-      {prefs.showOpponentPlayer && (
-        <PlayerPicker
-          players={players}
-          selectedIds={opponentPlayerIds}
-          onToggle={toggleOpponentPlayer}
-          onAdd={addOpponentPlayer}
-        />
-      )}
 
       {prefs.showMyDeck && (
         <DeckPicker
@@ -178,6 +169,15 @@ export function MatchSetupForm({
           selectedIds={opponentDeckIds}
           onToggle={toggleOpponentDeck}
           onAdd={addOpponentDeck}
+        />
+      )}
+
+      {prefs.showOpponentPlayer && (
+        <PlayerPicker
+          players={players}
+          selectedIds={opponentPlayerIds}
+          onToggle={toggleOpponentPlayer}
+          onAdd={addOpponentPlayer}
         />
       )}
 

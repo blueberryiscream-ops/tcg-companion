@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { GameProfile, Match } from '../db/types'
 import { useBoard } from '../live/useBoard'
@@ -13,16 +13,18 @@ import { GameResultForm } from '../records/GameResultForm'
 import { createMatch, addGameRecord, updateMatchResult } from '../db/repo'
 import { requiredWins } from '../records/matchLogic'
 import { useUiPrefs } from '../lib/uiPrefs'
+import { useWallpaperUrl } from '../live/useWallpaperUrl'
+import { HOME_WALLPAPER_ID } from '../db/wallpaper'
+import { useWakeLock } from '../lib/useWakeLock'
+import { DEFAULT_ACCENT, hexToRgba } from '../lib/color'
+import {
+  loadLiveSession,
+  saveLiveSession,
+  clearLiveSession,
+  type MatchSession,
+} from '../live/liveSession'
 
 type ToolKey = 'coin' | 'dice' | 'mulligan' | 'playdraw' | null
-
-// 進行中のマッチ（記録に接続済み）。BO3等は複数ゲームぶんここで数える。
-interface MatchSession {
-  matchId: string
-  format: Match['format']
-  gameIndex: number
-  wins: { me: number; opponent: number; draw: number }
-}
 
 // 対面プレイ用：画面の片側（上段/下段）に並ぶプレイヤーの列。
 // 2人なら1枚、4人なら2枚を横並びにする。グリッドにすることで、
@@ -43,21 +45,71 @@ export function LiveScreen({
   profiles,
   selectedProfileId,
   onSelectProfile,
+  isActiveTab,
 }: {
   profiles: GameProfile[]
   selectedProfileId: string | null
   onSelectProfile: (id: string) => void
+  isActiveTab: boolean
 }) {
   const profile = profiles.find((p) => p.id === selectedProfileId) ?? null
   const { prefs } = useUiPrefs()
 
-  // 1v1 か 多人数か。プロファイルの既定人数から初期値を決める。
-  const [multi, setMulti] = useState(false)
+  // Wake Lock（DESIGN.md §8-2）: 設定でONにしていて、かつ実際にこのタブを見ているときだけ画面消灯を防ぐ。
+  useWakeLock(prefs.wakeLockEnabled && isActiveTab)
+
+  // 端末に保存された「対戦の続き」。スマホでアプリを切り替えた後などにページが作り直されても、
+  // ライフ等が消えないようにするための復元用データ（一度だけ読む）。
+  const [initialSession] = useState(() => loadLiveSession())
+  const restoredSession =
+    initialSession && initialSession.profileId === selectedProfileId ? initialSession : null
+
+  // 1v1 か 多人数か。プロファイルの既定人数から初期値を決める（復元できるならその値を優先）。
+  const [multi, setMulti] = useState(() =>
+    restoredSession ? restoredSession.multi : (profile?.playerCountDefault ?? 2) > 2,
+  )
+  // プロファイルが「実際に変わったとき」だけ既定値へ戻す。
+  // 注意: profilesの読み込みが非同期のため、マウント直後は一瞬 profile が null になる
+  // （selectedProfileIdは復元済みでもprofiles配列がまだ空）。この間に「変わった」と
+  // 誤判定しないよう、基準点は「復元データがあればそのID、無ければnull」から始める
+  // （profile.idを使わない＝読み込みタイミングに左右されない）。
+  const prevProfileIdForMulti = useRef<string | null>(restoredSession?.profileId ?? null)
   useEffect(() => {
-    setMulti((profile?.playerCountDefault ?? 2) > 2)
+    if (!profile) return
+    if (prevProfileIdForMulti.current === profile.id) return
+    prevProfileIdForMulti.current = profile.id
+    setMulti((profile.playerCountDefault ?? 2) > 2)
   }, [profile?.id, profile?.playerCountDefault])
 
   const playerCount = multi ? (profile?.playerCountDefault ?? 4) : 2
+  // 多人数(EDH等)は画面が狭く文字がごちゃつきやすいので、設定に関わらず常にアイコンのみ表示にする。
+  const effectiveCompactUI = prefs.compactLiveScreen || multi
+
+  // ホーム画面（「ゲームを選ぶ」一覧）専用の壁紙。ゲーム別壁紙とは別枠で1枚だけ設定できる。
+  const homeWallpaperUrl = useWallpaperUrl(HOME_WALLPAPER_ID)
+  const homeBgStyle = homeWallpaperUrl
+    ? {
+        backgroundImage: `linear-gradient(${hexToRgba('#0b0f17', 0.55)}, ${hexToRgba('#0b0f17', 0.55)}), url(${homeWallpaperUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center top',
+      }
+    : undefined
+
+  // ゲーム別背景（DESIGN.md §8-1）: 壁紙が設定されていればそれ＋暗幕、無ければアクセント色の淡いグラデ。
+  const wallpaperUrl = useWallpaperUrl(profile?.id ?? null)
+  const accentColor = profile?.accentColor ?? DEFAULT_ACCENT
+  // 多人数(EDH)/文字を減らす設定のときは数字の可読性を最優先し、暗幕を濃くして壁紙を抑える。
+  const scrimAlpha = effectiveCompactUI ? 0.9 : 0.68
+  const liveBgStyle = wallpaperUrl
+    ? {
+        backgroundImage: `linear-gradient(${hexToRgba('#0b0f17', scrimAlpha)}, ${hexToRgba('#0b0f17', scrimAlpha)}), url(${wallpaperUrl})`,
+        backgroundSize: 'cover',
+        // 縦長の人物イラストで顔が切れないよう、中央ではなく上寄りを基準に切り抜く。
+        backgroundPosition: 'center top',
+      }
+    : {
+        backgroundImage: `radial-gradient(140% 90% at 50% -10%, ${hexToRgba(accentColor, 0.16)}, transparent 60%)`,
+      }
 
   const {
     board,
@@ -68,10 +120,16 @@ export function LiveScreen({
     changeMulligan,
     undo,
     reset,
-  } = useBoard(profile, playerCount)
+  } = useBoard(
+    profile,
+    playerCount,
+    restoredSession ? { profileId: restoredSession.profileId, board: restoredSession.board } : null,
+  )
 
   const [tool, setTool] = useState<ToolKey>(null)
-  const [onThePlay, setOnThePlay] = useState<'me' | 'opponent' | null>(null)
+  const [onThePlay, setOnThePlay] = useState<'me' | 'opponent' | null>(
+    () => restoredSession?.onThePlay ?? null,
+  )
 
   // 各カウンターの向き（true=180度反転）。キーはプレイヤーの並び順(index)。
   // 既定は「相手側(後半)だけ反転」＝対面。人数やゲームが変わったら既定に戻す。
@@ -81,9 +139,24 @@ export function LiveScreen({
   }, [profile?.id, multi])
 
   // ライブ→記録連携（フェーズ2）
-  const [matchSession, setMatchSession] = useState<MatchSession | null>(null)
+  const [matchSession, setMatchSession] = useState<MatchSession | null>(
+    () => restoredSession?.matchSession ?? null,
+  )
   const [recordStep, setRecordStep] = useState<'setup' | 'result' | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+
+  // 対戦の続きを端末に保存する。スマホでアプリを切り替えたりOSにページを作り直されたりしても、
+  // ライフ・マリガン・記録中のマッチなどが消えないようにするため（変更のたびに上書き保存）。
+  useEffect(() => {
+    if (!profile) {
+      // プロファイル一覧がまだ読み込み中の一瞬もここを通るので、読み込み済みで
+      // 本当に該当なし（＝ユーザーがゲームを選び直した）のときだけ消す。
+      if (profiles.length > 0) clearLiveSession()
+      return
+    }
+    saveLiveSession({ profileId: profile.id, multi, board, matchSession, onThePlay })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, profiles.length, multi, board, matchSession, onThePlay])
 
   function showToast(msg: string) {
     setToast(msg)
@@ -153,11 +226,11 @@ export function LiveScreen({
     showToast('マッチを終了しました')
   }
 
-  // プロファイル未選択：まず選んでもらう。
+  // プロファイル未選択：まず選んでもらう。ホーム画面用の壁紙があればページ全体の背景に敷く。
   if (!profile) {
     return (
-      <div className="p-4">
-        <h1 className="mb-1 text-2xl font-bold">対戦</h1>
+      <div className="h-full p-4" style={homeBgStyle}>
+        <h1 className="mb-1 text-2xl font-bold tracking-tight">対戦</h1>
         <p className="mb-4 text-sm text-slate-400">
           使うゲームを選んでください。あとから設定タブでも変えられます。
         </p>
@@ -201,7 +274,7 @@ export function LiveScreen({
         others={board.players.filter((o) => o.id !== p.id)}
         supportsCommanderDamage={supportsCommanderDamage}
         compact={multi}
-        hideName={prefs.compactLiveScreen}
+        hideName={effectiveCompactUI}
         flipped={flipped}
         onToggleFlip={() => setFlips((f) => ({ ...f, [index]: !(f[index] ?? defaultFlipped) }))}
         onChangeLife={(delta) => changeLife(p.id, delta)}
@@ -212,7 +285,7 @@ export function LiveScreen({
   }
 
   return (
-    <div className="flex h-full flex-col gap-2 p-2">
+    <div className="flex h-full flex-col gap-2 p-2" style={liveBgStyle}>
       {/* 相手側（上）：ライフカウンターだけ。各パネルは⇅で向きを反転できる（既定は相手向き）。 */}
       <div className="min-h-0 flex-1">
         <SideRow count={opponentSidePlayers.length}>
@@ -222,17 +295,17 @@ export function LiveScreen({
 
       {/* 中央の共有ツール：コイン/ダイス/マリガン/先後。相手も触れるよう真ん中に置く。 */}
       <div className="grid shrink-0 grid-cols-4 gap-2">
-        <ToolButton icon="🪙" label="コイン" compact={prefs.compactLiveScreen} onClick={() => setTool('coin')} />
-        <ToolButton icon="🎲" label="ダイス" compact={prefs.compactLiveScreen} onClick={() => setTool('dice')} />
+        <ToolButton icon="🪙" label="コイン" compact={effectiveCompactUI} onClick={() => setTool('coin')} />
+        <ToolButton icon="🎲" label="ダイス" compact={effectiveCompactUI} onClick={() => setTool('dice')} />
         <ToolButton
           icon="🔄"
           label={`マリガン 自${board.mulligans.me}/相${board.mulligans.opponent}`}
           badge={board.mulligans.me}
           badgeOpponent={board.mulligans.opponent}
-          compact={prefs.compactLiveScreen}
+          compact={effectiveCompactUI}
           onClick={() => setTool('mulligan')}
         />
-        <ToolButton icon="🥇" label="先後" compact={prefs.compactLiveScreen} onClick={() => setTool('playdraw')} />
+        <ToolButton icon="🥇" label="先後" compact={effectiveCompactUI} onClick={() => setTool('playdraw')} />
       </div>
 
       {/* 自分側（下）：ライフカウンター（既定は自分向き） */}
@@ -309,7 +382,7 @@ export function LiveScreen({
         {/* この対戦を記録する（フェーズ2の核） */}
         <button
           onClick={openRecordFlow}
-          className="rounded-xl bg-sky-600 py-3 text-base font-bold text-white active:bg-sky-500"
+          className="rounded-xl bg-[var(--accent)] py-3 text-base font-bold text-white active:opacity-80"
         >
           🏁 {matchSession ? 'このゲームの結果を記録する' : 'この対戦を記録する'}
         </button>

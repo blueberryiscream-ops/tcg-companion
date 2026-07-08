@@ -23,11 +23,13 @@ export function BottomTabs({
             key={t.key}
             onClick={() => onChange(t.key)}
             className={
-              'flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs transition-colors ' +
-              (on ? 'text-sky-400' : 'text-slate-400')
+              'flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs transition-all ' +
+              (on ? 'text-[var(--accent)]' : 'text-slate-400')
             }
           >
-            <span className="text-xl leading-none">{t.icon}</span>
+            <span className={'text-xl leading-none transition-transform ' + (on ? 'scale-110' : '')}>
+              {t.icon}
+            </span>
             <span>{t.label}</span>
           </button>
         )

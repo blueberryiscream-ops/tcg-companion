@@ -20,7 +20,7 @@ export function PlayerPicker({
   async function handleDelete(id: string) {
     const player = players.find((p) => p.id === id)
     const ok = window.confirm(
-      `「${player?.name ?? ''}」を削除しますか？\n過去の記録の表示には出せなくなります（記録自体は残ります）。`,
+      `「${player?.name ?? ''}」を削除しますか？\n⚠️ このプレイヤーを使った過去の対戦記録からも表示が消えます（記録データ自体は消えません）。`,
     )
     if (ok) await deletePlayer(id)
   }

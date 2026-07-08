@@ -42,7 +42,7 @@ export function TagPicker({
     const tag = tagItems.find((t) => t.id === id)
     if (!tag) return
     const ok = window.confirm(
-      `タグ「${tag.name}」を削除しますか？\n過去の記録からもこのタグが外れます（記録自体は残ります）。`,
+      `タグ「${tag.name}」を削除しますか？\n⚠️ このタグが付いている過去の対戦記録からも、タグが実際に取り除かれます（対戦記録自体は消えません）。`,
     )
     if (!ok) return
     await deleteTag(profileId, id)

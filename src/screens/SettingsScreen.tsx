@@ -7,6 +7,9 @@ import { DeckPicker } from '../records/DeckPicker'
 import { TagPicker } from '../records/TagPicker'
 import { PlayerPicker } from '../records/PlayerPicker'
 import { useUiPrefs, type UiPrefs } from '../lib/uiPrefs'
+import { WAKE_LOCK_SUPPORTED } from '../lib/useWakeLock'
+import { HOME_WALLPAPER_ID } from '../db/wallpaper'
+import { WallpaperSection } from './WallpaperSection'
 
 // データのバックアップ（全体書き出し/読み込み）。DESIGN.mdのSyncAdapter構想に対応。
 function BackupSection() {
@@ -130,7 +133,7 @@ export function SettingsScreen({ profiles }: { profiles: GameProfile[] }) {
 
   return (
     <div className="p-4">
-      <h1 className="mb-1 text-2xl font-bold">設定</h1>
+      <h1 className="mb-1 text-2xl font-bold tracking-tight">設定</h1>
       <p className="mb-4 text-sm text-slate-400">ゲームのプリセット（内蔵）</p>
 
       <div className="flex flex-col gap-3">
@@ -154,11 +157,25 @@ export function SettingsScreen({ profiles }: { profiles: GameProfile[] }) {
       </div>
 
       <div className="mt-6">
+        <h2 className="mb-2 text-lg font-semibold">ホーム画面の壁紙</h2>
+        <WallpaperSection
+          id={HOME_WALLPAPER_ID}
+          title="「対戦」タブ最初の『ゲームを選ぶ』画面の壁紙"
+          description="任意の画像をこの端末に保存して、ゲームを選ぶ画面全体の背景にできます。文字が読みやすいよう自動で暗幕をかけ、縦長の画像は上側（顔まわり）を優先して切り抜きます。画像はこの端末だけに保存され、バックアップの書き出しには含まれません。"
+        />
+      </div>
+
+      <div className="mt-6">
         <h2 className="mb-2 text-lg font-semibold">表示のカスタマイズ</h2>
         <p className="mb-2 text-xs text-slate-500">
           使わない項目を消してシンプルにしたり、操作に慣れたらライブ画面の文字を減らせます。
         </p>
         <div className="flex flex-col gap-1.5">
+          <PrefToggle
+            label="記録画面：タグ欄"
+            checked={prefs.showTags}
+            onChange={(v) => setBoolPref('showTags', v)}
+          />
           <PrefToggle
             label="記録画面：自分のデッキ欄"
             checked={prefs.showMyDeck}
@@ -168,11 +185,6 @@ export function SettingsScreen({ profiles }: { profiles: GameProfile[] }) {
             label="記録画面：対面デッキ欄"
             checked={prefs.showOpponentDeck}
             onChange={(v) => setBoolPref('showOpponentDeck', v)}
-          />
-          <PrefToggle
-            label="記録画面：タグ欄"
-            checked={prefs.showTags}
-            onChange={(v) => setBoolPref('showTags', v)}
           />
           <PrefToggle
             label="記録画面：対面プレイヤー欄"
@@ -193,10 +205,29 @@ export function SettingsScreen({ profiles }: { profiles: GameProfile[] }) {
       </div>
 
       <div className="mt-6">
+        <h2 className="mb-2 text-lg font-semibold">画面・電池</h2>
+        {WAKE_LOCK_SUPPORTED ? (
+          <>
+            <PrefToggle
+              label="対戦中に画面が自動で消えないようにする"
+              checked={prefs.wakeLockEnabled}
+              onChange={(v) => setBoolPref('wakeLockEnabled', v)}
+            />
+            <p className="mt-1.5 text-xs text-slate-500">
+              ONにすると対戦（対戦タブを見ている間）は画面が暗くなりません。バッテリーの減りは早くなります。
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-slate-500">
+            この端末・ブラウザは画面の自動消灯を防ぐ機能に対応していません。
+          </p>
+        )}
+      </div>
+
+      <div className="mt-6">
         <h2 className="mb-2 text-lg font-semibold">デッキ・タグ・プレイヤーの整理</h2>
         <p className="mb-2 text-xs text-slate-500">
-          「対戦を記録する」画面と同じチップです。右上の「✏️
-          並び替え・編集」で、ドラッグ並び替え・タップで改名・✕で削除ができます。
+          「対戦を記録する」画面と同じチップです。右上の「編集」で、ドラッグ並び替え・タップで改名・✕で削除ができます。
         </p>
         <select
           value={manageProfileId ?? ''}
@@ -213,6 +244,11 @@ export function SettingsScreen({ profiles }: { profiles: GameProfile[] }) {
 
         {manageProfile && (
           <div className="flex flex-col gap-4">
+            <WallpaperSection
+              id={manageProfile.id}
+              title="このゲームの壁紙（対戦中の背景）"
+              description="任意の画像をこの端末に保存して、対戦中のライフ画面の背景にできます。文字が読みやすいよう自動で暗幕をかけ、縦長の画像は上側（顔まわり）を優先して切り抜きます。画像はこの端末だけに保存され、バックアップの書き出しには含まれません。"
+            />
             <DeckManageSection profileId={manageProfile.id} isMine={true} />
             <DeckManageSection profileId={manageProfile.id} isMine={false} />
             <PlayerManageSection profileId={manageProfile.id} />

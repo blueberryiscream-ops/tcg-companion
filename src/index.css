@@ -13,7 +13,8 @@ body,
 
 body {
   margin: 0;
-  background: #0b0f17;
+  /* フラットな黒一色よりわずかに奥行きを感じる、上質ミニマルの土台。 */
+  background: radial-gradient(1200px 800px at 50% -10%, #121a2b 0%, #0b0f17 55%);
   color: #e5e9f0;
   font-family: system-ui, -apple-system, 'Segoe UI', 'Hiragino Kaku Gothic ProN',
     'Noto Sans JP', sans-serif;

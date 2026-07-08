@@ -16,10 +16,13 @@ export function Sheet({
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       {/* 背景の暗幕。タップで閉じる。 */}
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative max-h-[85%] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-[#131a28] p-4 shadow-2xl">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="relative max-h-[85%] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 border-t-2 bg-[#131a28] p-4 shadow-2xl"
+        style={{ borderTopColor: 'var(--accent)' }}
+      >
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{title}</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
           <button
             onClick={onClose}
             className="rounded-lg bg-white/10 px-3 py-1 text-sm text-slate-200 active:bg-white/20"

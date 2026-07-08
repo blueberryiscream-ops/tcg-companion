@@ -31,8 +31,8 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
         stroke="rgba(255,255,255,0.15)"
         strokeDasharray="4 4"
       />
-      <path d={path} fill="none" stroke="#38bdf8" strokeWidth="2" />
-      <circle cx={xScale(last.matchIndex)} cy={yScale(last.cumulativeWinRate)} r="3" fill="#38bdf8" />
+      <path d={path} fill="none" stroke="var(--accent)" strokeWidth="2" />
+      <circle cx={xScale(last.matchIndex)} cy={yScale(last.cumulativeWinRate)} r="3" fill="var(--accent)" />
       <text x={w - pad} y={12} textAnchor="end" fontSize="10" fill="#94a3b8">
         {Math.round(last.cumulativeWinRate * 100)}%
       </text>

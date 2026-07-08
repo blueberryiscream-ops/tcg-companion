@@ -20,6 +20,7 @@ export interface GameProfile {
   counterTypes: CounterType[]
   diceDefaults: DieType[]
   isBuiltIn: boolean
+  accentColor?: string // '#rrggbb'。ゲーム別テーマの基準色（未設定は既定色にフォールバック）
 }
 
 // 自分のデッキ（対面デッキも同じ概念で候補サジェストに使う）
@@ -78,6 +79,14 @@ export interface LifeEvent {
 export interface FinalLifeSnapshot {
   name: string
   life: number
+}
+
+// ユーザーが設定するゲーム別の壁紙画像。プロファイルID＝主キー（1プロファイル1枚）。
+// サイズが大きくなりうるため、バックアップJSONには含めない（端末内だけの設定）。
+export interface Wallpaper {
+  gameProfileId: string
+  blob: Blob
+  updatedAt: string
 }
 
 // マッチ内の各ゲーム（BO3なら最大3つ）
