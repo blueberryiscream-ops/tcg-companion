@@ -32,10 +32,15 @@ function HelpAccordionItem({ id, q, a, open, onToggle }: {
   )
 }
 
-// 「使い方・よくある質問」本体。Settings画面からSheetで開く。
+// 「使い方・よくある質問」本体。Settings画面や起動時の案内からSheetで開く。
 // 新しい機能を作ったら、対応するQ&Aを src/content/helpContent.ts に追記・更新する運用（DESIGN.md参照）。
-export function HelpSection() {
-  const [openIds, setOpenIds] = useState<Set<string>>(new Set())
+//
+// expandFirstItem: 起動時の案内から開いた時だけ、先頭（＝「はじめての方へ」の
+// ホーム画面追加の手順）を最初から開いた状態で見せる。
+export function HelpSection({ expandFirstItem = false }: { expandFirstItem?: boolean }) {
+  const [openIds, setOpenIds] = useState<Set<string>>(() =>
+    expandFirstItem ? new Set(['0-0']) : new Set(),
+  )
 
   function toggle(id: string) {
     setOpenIds((prev) => {

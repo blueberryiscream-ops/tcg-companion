@@ -6,12 +6,22 @@ import { BottomTabs, type TabKey } from './components/BottomTabs'
 import { LiveScreen } from './screens/LiveScreen'
 import { RecordsScreen } from './screens/RecordsScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
+import { HelpSection } from './screens/HelpSection'
+import { StartupNotice } from './components/StartupNotice'
+import { Sheet } from './components/Sheet'
 import { UiPrefsProvider } from './lib/uiPrefs'
 import { DEFAULT_ACCENT } from './lib/color'
 import { loadLiveSession } from './live/liveSession'
 
 export function App() {
   const [tab, setTab] = useState<TabKey>('live')
+
+  // 「使い方・よくある質問」。設定タブのボタンと、起動時の案内バナーの両方から開くため、
+  // Sheetはここ（アプリ全体）で持つ。バナーから開いた時だけ先頭項目を開いて見せる。
+  const [help, setHelp] = useState<{ open: boolean; fromNotice: boolean }>({
+    open: false,
+    fromNotice: false,
+  })
 
   // IndexedDB のプロファイル一覧をリアクティブに読む（変わると自動再描画）。
   const profiles = useLiveQuery(() => db.profiles.toArray(), [])
@@ -33,6 +43,7 @@ export function App() {
   return (
     <UiPrefsProvider>
       <div className="flex h-full flex-col" style={themeStyle}>
+        <StartupNotice onOpenHelp={() => setHelp({ open: true, fromNotice: true })} />
         <main className="relative min-h-0 flex-1">
           <TabPanel active={tab === 'live'}>
             <LiveScreen
@@ -46,10 +57,20 @@ export function App() {
             <RecordsScreen profiles={profiles ?? []} selectedProfileId={selectedProfileId} />
           </TabPanel>
           <TabPanel active={tab === 'settings'} scroll>
-            <SettingsScreen profiles={profiles ?? []} />
+            <SettingsScreen
+              profiles={profiles ?? []}
+              onOpenHelp={() => setHelp({ open: true, fromNotice: false })}
+            />
           </TabPanel>
         </main>
         <BottomTabs active={tab} onChange={setTab} />
+        <Sheet
+          open={help.open}
+          title="使い方・よくある質問"
+          onClose={() => setHelp({ open: false, fromNotice: false })}
+        >
+          <HelpSection expandFirstItem={help.fromNotice} />
+        </Sheet>
       </div>
     </UiPrefsProvider>
   )

@@ -13,3 +13,7 @@ Thumbs.db
 
 # ログ
 npm-debug.log*
+
+# Playwright（WebKit検証）の出力
+test-results/
+playwright-report/

@@ -1,39 +1,48 @@
 import { useState } from 'react'
 import { Plus, X, Check } from 'lucide-react'
 import { ALL_DICE_TYPES, type DieType, type CounterType, type GameProfile } from '../db/types'
-import { createGameProfile, type CreateGameProfileInput } from '../db/profiles'
+import { createGameProfile, updateGameProfile, type GameProfileInput } from '../db/profiles'
 import { PrefToggle } from '../components/PrefToggle'
 import { DEFAULT_ACCENT } from '../lib/color'
+import { newId } from '../lib/id'
 
-// 新しいゲームプロファイルを作る（DESIGN.md フェーズ5「ゲームプロファイルのユーザー追加」）。
+// ゲームプロファイルを作る／直すフォーム。
+// profile を渡すと「編集」、渡さなければ「新規作成」として振る舞う（DESIGN.md §12-1）。
 // カウンターの種類は自由入力（毒/エネルギーのような細かい対応は用意しない）。
 export function GameProfileForm({
+  profile,
   onCancel,
-  onCreated,
+  onSaved,
 }: {
+  profile?: GameProfile | null
   onCancel: () => void
-  onCreated: (profile: GameProfile) => void
+  onSaved: (profile: GameProfile) => void
 }) {
-  const [name, setName] = useState('')
-  const [hasLifeCounter, setHasLifeCounter] = useState(true)
-  const [startingLife, setStartingLife] = useState(20)
-  const [playerCountDefault, setPlayerCountDefault] = useState(2)
-  const [supportsCommanderDamage, setSupportsCommanderDamage] = useState(false)
-  const [counterLabels, setCounterLabels] = useState<string[]>([])
+  const isEdit = !!profile
+  const [name, setName] = useState(profile?.name ?? '')
+  const [hasLifeCounter, setHasLifeCounter] = useState(profile?.hasLifeCounter ?? true)
+  const [startingLife, setStartingLife] = useState(profile?.startingLife ?? 20)
+  const [playerCountDefault, setPlayerCountDefault] = useState(profile?.playerCountDefault ?? 2)
+  const [supportsCommanderDamage, setSupportsCommanderDamage] = useState(
+    profile?.supportsCommanderDamage ?? false,
+  )
+  // 編集時は既存の key をそのまま持ち回る。key が変わると、対戦中の盤面に入っている
+  // カウンターの値が別物として扱われてしまうため。
+  const [counters, setCounters] = useState<CounterType[]>(profile?.counterTypes ?? [])
   const [newCounterLabel, setNewCounterLabel] = useState('')
-  const [diceDefaults, setDiceDefaults] = useState<DieType[]>(['d6'])
-  const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT)
+  const [diceDefaults, setDiceDefaults] = useState<DieType[]>(profile?.diceDefaults ?? ['d6'])
+  const [accentColor, setAccentColor] = useState(profile?.accentColor ?? DEFAULT_ACCENT)
   const [submitting, setSubmitting] = useState(false)
 
   function addCounter() {
     const label = newCounterLabel.trim()
     if (!label) return
-    setCounterLabels((ls) => [...ls, label])
+    setCounters((cs) => [...cs, { key: `c_${newId()}`, label, defaultValue: 0 }])
     setNewCounterLabel('')
   }
 
-  function removeCounter(index: number) {
-    setCounterLabels((ls) => ls.filter((_, i) => i !== index))
+  function removeCounter(key: string) {
+    setCounters((cs) => cs.filter((c) => c.key !== key))
   }
 
   function toggleDie(d: DieType) {
@@ -45,28 +54,36 @@ export function GameProfileForm({
   async function handleSubmit() {
     if (!canSubmit) return
     setSubmitting(true)
-    const counterTypes: CounterType[] = counterLabels.map((label, i) => ({
-      key: `c${i}_${label}`,
-      label,
-      defaultValue: 0,
-    }))
-    const input: CreateGameProfileInput = {
+    const input: GameProfileInput = {
       name: name.trim(),
       hasLifeCounter,
       startingLife: hasLifeCounter ? startingLife : 0,
       playerCountDefault: Math.max(2, playerCountDefault || 2),
       supportsCommanderDamage: hasLifeCounter && supportsCommanderDamage,
-      counterTypes,
+      counterTypes: counters,
       diceDefaults: diceDefaults.length > 0 ? diceDefaults : ['d6'],
       accentColor,
     }
-    const profile = await createGameProfile(input)
-    setSubmitting(false)
-    onCreated(profile)
+    if (profile) {
+      await updateGameProfile(profile.id, input)
+      setSubmitting(false)
+      onSaved({ ...profile, ...input })
+    } else {
+      const created = await createGameProfile(input)
+      setSubmitting(false)
+      onSaved(created)
+    }
   }
 
   return (
     <div className="flex flex-col gap-4">
+      {isEdit && (
+        <p className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-400">
+          設定を変えても、このゲームの対戦記録・デッキはそのまま残ります。
+          {profile?.isBuiltIn && '（内蔵ゲームは「初期設定に戻す」でいつでも元に戻せます）'}
+        </p>
+      )}
+
       <div>
         <div className="mb-1 text-xs text-slate-400">ゲーム名</div>
         <input
@@ -113,20 +130,18 @@ export function GameProfileForm({
       <div>
         <div className="mb-1 text-xs text-slate-400">その他カウンター（毒・エール等・任意）</div>
         <div className="mb-2 flex flex-wrap gap-2">
-          {counterLabels.map((label, i) => (
+          {counters.map((c) => (
             <span
-              key={i}
+              key={c.key}
               className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-1.5 text-sm text-slate-200"
             >
-              {label}
-              <button type="button" onClick={() => removeCounter(i)} aria-label={`${label}を削除`}>
+              {c.label}
+              <button type="button" onClick={() => removeCounter(c.key)} aria-label={`${c.label}を削除`}>
                 <X size={13} strokeWidth={2.5} className="text-slate-500" />
               </button>
             </span>
           ))}
-          {counterLabels.length === 0 && (
-            <span className="text-sm text-slate-500">まだありません</span>
-          )}
+          {counters.length === 0 && <span className="text-sm text-slate-500">まだありません</span>}
         </div>
         <div className="flex gap-2">
           <input
@@ -202,7 +217,7 @@ export function GameProfileForm({
           className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-3 font-bold text-black transition-transform active:scale-[0.98] active:bg-emerald-400 disabled:opacity-40"
         >
           <Check size={16} strokeWidth={2.5} />
-          作成する
+          {isEdit ? '保存する' : '作成する'}
         </button>
       </div>
     </div>

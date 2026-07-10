@@ -3,6 +3,10 @@ import type { GameProfile } from './types'
 // 内蔵ゲームプロファイルのシード（DESIGN.md §3 フェーズ0）。
 // isBuiltIn: true。ユーザーが後から独自プロファイルを追加できる設計。
 // id は固定文字列にして、再シード時に重複しないようにする。
+//
+// 【重要】内蔵プロファイルはユーザーが編集できる（DESIGN.md §12-1）。そのため ensureSeed() は
+// 「まだ無いidだけ入れる」方式であり、ここの定義を後から書き換えても、既に使っている人の端末には
+// 反映されない。ここは「新規インストール時の初期値」＋「初期設定に戻す」の戻り先という位置づけ。
 export const BUILT_IN_PROFILES: GameProfile[] = [
   {
     id: 'builtin-mtg-1v1',
@@ -46,3 +50,8 @@ export const BUILT_IN_PROFILES: GameProfile[] = [
     accentColor: '#f472b6', // pink
   },
 ]
+
+// 「初期設定に戻す」用に、内蔵プロファイルの出荷時定義を id から引く。
+export function getBuiltInProfile(id: string): GameProfile | null {
+  return BUILT_IN_PROFILES.find((p) => p.id === id) ?? null
+}

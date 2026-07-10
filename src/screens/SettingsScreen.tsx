@@ -14,12 +14,14 @@ import {
   Plus,
   Trash2,
   HelpCircle,
+  Pencil,
+  RotateCcw,
 } from 'lucide-react'
 import type { GameProfile } from '../db/types'
 import { listDecks, createDeck, listPlayers, createPlayer, countAllMatches } from '../db/repo'
 import { exportBackup, importBackup } from '../db/backup'
 import { getLastBackupAt, daysSince, REMINDER_THRESHOLD_DAYS } from '../lib/backupReminder'
-import { deleteGameProfile } from '../db/profiles'
+import { deleteGameProfile, countProfileData, resetBuiltInProfile } from '../db/profiles'
 import { DeckPicker } from '../records/DeckPicker'
 import { TagPicker } from '../records/TagPicker'
 import { PlayerPicker } from '../records/PlayerPicker'
@@ -29,7 +31,6 @@ import { FULLSCREEN_SUPPORTED } from '../lib/useFullscreen'
 import { HOME_WALLPAPER_ID } from '../db/wallpaper'
 import { WallpaperSection } from './WallpaperSection'
 import { GameProfileForm } from './GameProfileForm'
-import { HelpSection } from './HelpSection'
 import { PrefToggle } from '../components/PrefToggle'
 import { Sheet } from '../components/Sheet'
 
@@ -146,26 +147,53 @@ function PlayerManageSection({ profileId }: { profileId: string }) {
 
 
 // 設定タブ。ゲームプロファイルの一覧表示（内蔵＋ユーザー追加） ＋ 表示のカスタマイズ ＋ デッキ・タグ・プレイヤーの整理。
-export function SettingsScreen({ profiles }: { profiles: GameProfile[] }) {
+// 「使い方・よくある質問」のSheetはApp側が持つ（起動時の案内バナーからも開くため）。
+export function SettingsScreen({
+  profiles,
+  onOpenHelp,
+}: {
+  profiles: GameProfile[]
+  onOpenHelp: () => void
+}) {
   const [manageProfileId, setManageProfileId] = useState<string | null>(null)
   const manageProfile = profiles.find((p) => p.id === manageProfileId) ?? null
   const [dummyTags, setDummyTags] = useState<string[]>([])
-  const [showAddProfile, setShowAddProfile] = useState(false)
-  const [showHelp, setShowHelp] = useState(false)
+  // 'new' なら新規作成フォーム、GameProfile ならそのゲームの編集フォーム、null なら閉じている。
+  const [profileForm, setProfileForm] = useState<'new' | GameProfile | null>(null)
   const { prefs, setPref } = useUiPrefs()
 
   function setBoolPref<K extends keyof UiPrefs>(key: K, value: boolean) {
     setPref(key, value as UiPrefs[K])
   }
 
+  // 何がいくつ消えるのかを実数で見せてから確定させる（DESIGN.md §12-1）。
   async function handleDeleteProfile(p: GameProfile) {
+    const c = await countProfileData(p.id)
     const ok = window.confirm(
-      `「${p.name}」を削除しますか？\n⚠️ このゲームのデッキ・タグ・プレイヤー・対戦記録もすべて削除されます。\n` +
+      `「${p.name}」を削除しますか？\n\n⚠️ 次のデータも一緒に消えます:\n` +
+        `・対戦記録 ${c.matches}件（ゲーム ${c.gameRecords}件）\n` +
+        `・デッキ ${c.decks}件\n` +
+        `・タグ ${c.tags}件\n` +
+        `・対面プレイヤー ${c.players}件\n` +
+        `・このゲームの壁紙\n\n` +
+        'この操作は取り消せません。\n' +
+        '名前や色を変えたいだけなら、削除ではなく鉛筆アイコンの「編集」を使ってください。\n' +
         'バックアップを書き出していれば、そこから復元できます。',
     )
     if (!ok) return
     await deleteGameProfile(p.id)
     if (manageProfileId === p.id) setManageProfileId(null)
+  }
+
+  // 内蔵ゲームを出荷時の設定に戻す。対戦記録・デッキ等のデータには触れない。
+  async function handleResetProfile(p: GameProfile) {
+    const ok = window.confirm(
+      `「${p.name}」の設定を初期状態に戻しますか？\n\n` +
+        '名前・ライフ・カウンター・色などが最初の設定に戻ります。\n' +
+        '対戦記録・デッキ・タグ・壁紙はそのまま残ります。',
+    )
+    if (!ok) return
+    await resetBuiltInProfile(p.id)
   }
 
   return (
@@ -174,33 +202,48 @@ export function SettingsScreen({ profiles }: { profiles: GameProfile[] }) {
       <p className="mb-4 text-sm text-slate-400">ゲームプロファイル（内蔵＋追加分）</p>
 
       <button
-        onClick={() => setShowHelp(true)}
+        onClick={onOpenHelp}
         className="mb-6 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] py-3 text-sm font-semibold text-slate-200 transition-transform active:scale-[0.98] active:bg-white/15"
       >
         <HelpCircle size={17} strokeWidth={1.75} />
         使い方・よくある質問
       </button>
-      <Sheet open={showHelp} title="使い方・よくある質問" onClose={() => setShowHelp(false)}>
-        <HelpSection />
-      </Sheet>
 
       <div className="flex flex-col gap-3">
         {profiles.map((p) => (
           <div key={p.id} className="rounded-xl border border-white/10 bg-white/[0.05] p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 font-semibold">
-                <Gamepad2 size={16} strokeWidth={1.75} className="text-slate-500" />
-                {p.name}
+              <div className="flex min-w-0 items-center gap-2 font-semibold">
+                <Gamepad2 size={16} strokeWidth={1.75} className="shrink-0 text-slate-500" />
+                <span className="truncate">{p.name}</span>
               </div>
-              {!p.isBuiltIn && (
+              <div className="flex shrink-0 items-center">
                 <button
-                  onClick={() => handleDeleteProfile(p)}
-                  className="rounded-lg p-1.5 text-slate-500 transition-colors active:bg-white/10 active:text-rose-300"
-                  aria-label={`${p.name}を削除`}
+                  onClick={() => setProfileForm(p)}
+                  className="rounded-lg p-1.5 text-slate-500 transition-colors active:bg-white/10 active:text-slate-200"
+                  aria-label={`${p.name}を編集`}
                 >
-                  <Trash2 size={15} strokeWidth={1.75} />
+                  <Pencil size={15} strokeWidth={1.75} />
                 </button>
-              )}
+                {p.isBuiltIn ? (
+                  <button
+                    onClick={() => handleResetProfile(p)}
+                    className="rounded-lg p-1.5 text-slate-500 transition-colors active:bg-white/10 active:text-slate-200"
+                    aria-label={`${p.name}を初期設定に戻す`}
+                    title="初期設定に戻す"
+                  >
+                    <RotateCcw size={15} strokeWidth={1.75} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleDeleteProfile(p)}
+                    className="rounded-lg p-1.5 text-slate-500 transition-colors active:bg-white/10 active:text-rose-300"
+                    aria-label={`${p.name}を削除`}
+                  >
+                    <Trash2 size={15} strokeWidth={1.75} />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="mt-1 text-sm text-slate-400">
               {p.hasLifeCounter ?? true ? `開始ライフ ${p.startingLife} / ` : ''}
@@ -218,7 +261,7 @@ export function SettingsScreen({ profiles }: { profiles: GameProfile[] }) {
           </div>
         ))}
         <button
-          onClick={() => setShowAddProfile(true)}
+          onClick={() => setProfileForm('new')}
           className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/15 bg-white/[0.03] py-3 text-sm font-medium text-slate-300 transition-transform active:scale-[0.98] active:bg-white/10"
         >
           <Plus size={16} strokeWidth={2} />
@@ -226,12 +269,20 @@ export function SettingsScreen({ profiles }: { profiles: GameProfile[] }) {
         </button>
       </div>
 
-      <Sheet open={showAddProfile} title="ゲームを追加" onClose={() => setShowAddProfile(false)}>
+      <Sheet
+        open={profileForm !== null}
+        title={profileForm === 'new' ? 'ゲームを追加' : 'ゲームを編集'}
+        onClose={() => setProfileForm(null)}
+      >
         <GameProfileForm
-          onCancel={() => setShowAddProfile(false)}
-          onCreated={(created) => {
-            setShowAddProfile(false)
-            setManageProfileId(created.id)
+          // 開き直すたびにフォームの入力状態を作り直す（前に編集していた値が残らないように）。
+          key={profileForm === 'new' ? 'new' : (profileForm?.id ?? 'none')}
+          profile={profileForm === 'new' ? null : profileForm}
+          onCancel={() => setProfileForm(null)}
+          onSaved={(saved) => {
+            const wasNew = profileForm === 'new'
+            setProfileForm(null)
+            if (wasNew) setManageProfileId(saved.id)
           }}
         />
       </Sheet>
