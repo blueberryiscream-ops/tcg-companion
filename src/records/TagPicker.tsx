@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Tag } from 'lucide-react'
 import { listTags, createTag, renameTag, deleteTag, reorderTags } from '../db/repo'
 import { EditableChipGrid } from './EditableChipGrid'
 
@@ -53,7 +54,10 @@ export function TagPicker({
 
   return (
     <div>
-      <div className="mb-1 text-xs text-slate-400">タグ（大会名・フォーマット等・自由）</div>
+      <div className="mb-1 flex items-center gap-1 text-xs text-slate-400">
+        <Tag size={12} strokeWidth={2} />
+        タグ（大会名・フォーマット等・自由）
+      </div>
       <EditableChipGrid
         items={tagItems}
         selectedIds={selectedIds}

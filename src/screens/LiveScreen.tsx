@@ -1,5 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { ReactNode, ComponentType } from 'react'
+import {
+  Coins,
+  Dices,
+  Undo2,
+  RefreshCw,
+  Users,
+  User,
+  Flag,
+  ChevronDown,
+  Circle,
+  Maximize2,
+} from 'lucide-react'
+import { MulliganIcon } from '../live/MulliganIcon'
+import { DecideIcon } from '../live/DecideIcon'
 import type { GameProfile, Match } from '../db/types'
 import { useBoard } from '../live/useBoard'
 import { LifeCounter } from '../live/LifeCounter'
@@ -16,6 +30,7 @@ import { useUiPrefs } from '../lib/uiPrefs'
 import { useWallpaperUrl } from '../live/useWallpaperUrl'
 import { HOME_WALLPAPER_ID } from '../db/wallpaper'
 import { useWakeLock } from '../lib/useWakeLock'
+import { useFullscreen } from '../lib/useFullscreen'
 import { DEFAULT_ACCENT, hexToRgba } from '../lib/color'
 import {
   loadLiveSession,
@@ -25,6 +40,13 @@ import {
 } from '../live/liveSession'
 
 type ToolKey = 'coin' | 'dice' | 'mulligan' | 'playdraw' | null
+
+// lucideのアイコンと、手作りのSVGアイコン（MulliganIconなど）を同じ形で受け取るための型。
+type IconComponent = ComponentType<{
+  size?: number
+  strokeWidth?: number
+  className?: string
+}>
 
 // 対面プレイ用：画面の片側（上段/下段）に並ぶプレイヤーの列。
 // 2人なら1枚、4人なら2枚を横並びにする。グリッドにすることで、
@@ -57,6 +79,9 @@ export function LiveScreen({
 
   // Wake Lock（DESIGN.md §8-2）: 設定でONにしていて、かつ実際にこのタブを見ているときだけ画面消灯を防ぐ。
   useWakeLock(prefs.wakeLockEnabled && isActiveTab)
+
+  // 全画面表示（対面プレイ時の誤タップ対策）: 設定でONの時だけ、ゲームを選んだ操作の勢いで全画面化する。
+  const fullscreen = useFullscreen()
 
   // 端末に保存された「対戦の続き」。スマホでアプリを切り替えた後などにページが作り直されても、
   // ライフ等が消えないようにするための復元用データ（一度だけ読む）。
@@ -118,6 +143,7 @@ export function LiveScreen({
     setLife,
     addCommanderDamage,
     changeMulligan,
+    changeCounter,
     undo,
     reset,
   } = useBoard(
@@ -188,7 +214,10 @@ export function LiveScreen({
       mulligans: { me: board.mulligans.me, opponent: board.mulligans.opponent },
       result,
       lifeLog: board.lifeLog,
-      finalLife: board.players.map((p) => ({ name: p.name, life: p.life })),
+      finalLife:
+        (profile?.hasLifeCounter ?? true)
+          ? board.players.map((p) => ({ name: p.name, life: p.life }))
+          : undefined,
     })
 
     const wins = { ...matchSession.wins }
@@ -229,7 +258,10 @@ export function LiveScreen({
   // プロファイル未選択：まず選んでもらう。ホーム画面用の壁紙があればページ全体の背景に敷く。
   if (!profile) {
     return (
-      <div className="h-full p-4" style={homeBgStyle}>
+      <div
+        className="h-full p-4"
+        style={{ ...homeBgStyle, paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
+      >
         <h1 className="mb-1 text-2xl font-bold tracking-tight">対戦</h1>
         <p className="mb-4 text-sm text-slate-400">
           使うゲームを選んでください。あとから設定タブでも変えられます。
@@ -241,14 +273,27 @@ export function LiveScreen({
           {profiles.map((p) => (
             <button
               key={p.id}
-              onClick={() => onSelectProfile(p.id)}
-              className="rounded-xl bg-white/10 p-4 text-left active:bg-white/20"
+              onClick={() => {
+                onSelectProfile(p.id)
+                // タップの勢い（ユーザー操作）を使って全画面化する。設定でONの時だけ。
+                if (prefs.fullscreenOnPlay) fullscreen.enter()
+              }}
+              className="group flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-left shadow-sm shadow-black/20 transition-all active:scale-[0.98] active:bg-white/10"
             >
-              <div className="text-lg font-semibold">{p.name}</div>
-              <div className="text-sm text-slate-400">
-                開始ライフ {p.startingLife} / {p.playerCountDefault}人
-                {p.supportsCommanderDamage && ' / 統率者ダメージ'}
+              <div>
+                <div className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                  <span
+                    className="inline-block h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: p.accentColor ?? DEFAULT_ACCENT }}
+                  />
+                  {p.name}
+                </div>
+                <div className="mt-0.5 text-sm text-slate-400">
+                  開始ライフ {p.startingLife} / {p.playerCountDefault}人
+                  {p.supportsCommanderDamage && ' / 統率者ダメージ'}
+                </div>
               </div>
+              <ChevronDown className="-rotate-90 shrink-0 text-slate-600 transition-colors group-active:text-slate-400" size={20} />
             </button>
           ))}
         </div>
@@ -262,6 +307,8 @@ export function LiveScreen({
   const opponentSidePlayers = board.players.slice(half)
   // ネスト関数の中では profile の null 絞り込みが引き継がれないため、先に取り出しておく。
   const supportsCommanderDamage = profile.supportsCommanderDamage
+  const hasLifeCounter = profile.hasLifeCounter ?? true
+  const counterTypes = profile.counterTypes
 
   // index はプレイヤーの並び順。既定の向きは「後半(相手側)だけ反転」。
   function renderLifeCounter(p: (typeof board.players)[number], index: number) {
@@ -272,7 +319,9 @@ export function LiveScreen({
         key={p.id}
         player={p}
         others={board.players.filter((o) => o.id !== p.id)}
+        hasLifeCounter={hasLifeCounter}
         supportsCommanderDamage={supportsCommanderDamage}
+        counterTypes={counterTypes}
         compact={multi}
         hideName={effectiveCompactUI}
         flipped={flipped}
@@ -280,12 +329,16 @@ export function LiveScreen({
         onChangeLife={(delta) => changeLife(p.id, delta)}
         onSetLife={(v) => setLife(p.id, v)}
         onCommanderDamage={(sourceId, delta) => addCommanderDamage(p.id, sourceId, delta)}
+        onChangeCounter={(key, delta) => changeCounter(p.id, key, delta)}
       />
     )
   }
 
   return (
-    <div className="flex h-full flex-col gap-2 p-2" style={liveBgStyle}>
+    <div
+      className="flex h-full flex-col gap-2 p-2"
+      style={{ ...liveBgStyle, paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+    >
       {/* 相手側（上）：ライフカウンターだけ。各パネルは⇅で向きを反転できる（既定は相手向き）。 */}
       <div className="min-h-0 flex-1">
         <SideRow count={opponentSidePlayers.length}>
@@ -295,17 +348,17 @@ export function LiveScreen({
 
       {/* 中央の共有ツール：コイン/ダイス/マリガン/先後。相手も触れるよう真ん中に置く。 */}
       <div className="grid shrink-0 grid-cols-4 gap-2">
-        <ToolButton icon="🪙" label="コイン" compact={effectiveCompactUI} onClick={() => setTool('coin')} />
-        <ToolButton icon="🎲" label="ダイス" compact={effectiveCompactUI} onClick={() => setTool('dice')} />
+        <ToolButton icon={Coins} label="コイン" compact={effectiveCompactUI} onClick={() => setTool('coin')} />
+        <ToolButton icon={Dices} label="ダイス" compact={effectiveCompactUI} onClick={() => setTool('dice')} />
         <ToolButton
-          icon="🔄"
+          icon={MulliganIcon}
           label={`マリガン 自${board.mulligans.me}/相${board.mulligans.opponent}`}
           badge={board.mulligans.me}
           badgeOpponent={board.mulligans.opponent}
           compact={effectiveCompactUI}
           onClick={() => setTool('mulligan')}
         />
-        <ToolButton icon="🥇" label="先後" compact={effectiveCompactUI} onClick={() => setTool('playdraw')} />
+        <ToolButton icon={DecideIcon} label="先後" compact={effectiveCompactUI} onClick={() => setTool('playdraw')} />
       </div>
 
       {/* 自分側（下）：ライフカウンター（既定は自分向き） */}
@@ -317,23 +370,37 @@ export function LiveScreen({
 
       {/* 操作エリア（試合の設定・記録＝自分側の画面下にまとめる） */}
       <div className="flex shrink-0 flex-col gap-2">
+        {/* 全画面表示ONなのに未適用（再読み込みで復元した直後など、ブラウザの仕様で自動化できない場合）。
+            タップというユーザー操作そのものが全画面化に必要なので、ここで一回押してもらう。 */}
+        {prefs.fullscreenOnPlay && !fullscreen.isFullscreen && (
+          <button
+            onClick={() => fullscreen.enter()}
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-sky-400/20 bg-sky-500/15 px-3 py-1.5 text-center text-sm font-medium text-sky-200 active:bg-sky-500/25"
+          >
+            <Maximize2 size={14} strokeWidth={2} />
+            タップして全画面表示にする
+          </button>
+        )}
+
         {/* 先後の表示 */}
         {onThePlay && (
-          <div className="rounded-lg bg-violet-500/20 px-3 py-1.5 text-center text-sm text-violet-200">
+          <div className="flex items-center justify-center gap-1.5 rounded-lg border border-violet-400/20 bg-violet-500/15 px-3 py-1.5 text-center text-sm font-medium text-violet-200">
+            <DecideIcon size={15} strokeWidth={2} />
             先攻: {onThePlay === 'me' ? 'あなた' : '相手'}
           </div>
         )}
 
         {/* 記録中のマッチの進行状況 */}
         {matchSession && (
-          <div className="flex items-center justify-between rounded-lg bg-emerald-500/15 px-3 py-1.5 text-sm text-emerald-200">
-            <span>
+          <div className="flex items-center justify-between rounded-lg border border-emerald-400/20 bg-emerald-500/15 px-3 py-1.5 text-sm text-emerald-200">
+            <span className="flex items-center gap-1.5">
+              <Circle size={8} className="fill-emerald-400 text-emerald-400" />
               記録中: {matchSession.format ?? 'BO1'}（{matchSession.wins.me}-
               {matchSession.wins.opponent}）・第{matchSession.gameIndex}ゲーム
             </span>
             <button
               onClick={finalizeMatchNow}
-              className="rounded bg-white/10 px-2 py-0.5 text-xs active:bg-white/20"
+              className="rounded-md bg-white/10 px-2 py-0.5 text-xs font-medium active:bg-white/20"
             >
               終了
             </button>
@@ -343,26 +410,21 @@ export function LiveScreen({
         {/* ユーティリティ：ゲーム選択・人数・Undo・新ゲーム */}
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onSelectProfile('')}
-            className="min-w-0 flex-1 truncate rounded-lg bg-white/10 px-2 py-2 text-left text-sm text-slate-300 active:bg-white/20"
+            onClick={() => {
+              onSelectProfile('')
+              fullscreen.exit()
+            }}
+            className="flex min-w-0 flex-1 items-center gap-1 truncate rounded-lg border border-white/10 bg-white/[0.06] px-2.5 py-2 text-left text-sm text-slate-300 transition-colors active:bg-white/15"
             title="ゲームを選び直す"
           >
-            {profile.name} ▾
+            <span className="min-w-0 flex-1 truncate">{profile.name}</span>
+            <ChevronDown size={15} className="shrink-0 text-slate-500" />
           </button>
-          <button
-            onClick={() => setMulti((m) => !m)}
-            className="rounded-lg bg-white/10 px-3 py-2 text-sm active:bg-white/20"
-          >
-            {multi ? '多人数' : '1v1'}
-          </button>
-          <button
-            onClick={undo}
-            disabled={!canUndo}
-            className="rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold active:bg-white/20 disabled:opacity-40"
-          >
-            ↩ Undo
-          </button>
-          <button
+          <UtilityButton icon={multi ? Users : User} label={multi ? '多人数' : '1v1'} onClick={() => setMulti((m) => !m)} />
+          <UtilityButton icon={Undo2} label="Undo" onClick={undo} disabled={!canUndo} />
+          <UtilityButton
+            icon={RefreshCw}
+            label="新ゲーム"
             onClick={() => {
               const msg = matchSession
                 ? 'ライフやカウンターを初期状態に戻します。記録中のマッチもキャンセルされますが良いですか？'
@@ -373,18 +435,16 @@ export function LiveScreen({
                 setMatchSession(null)
               }
             }}
-            className="rounded-lg bg-white/10 px-3 py-2 text-sm active:bg-white/20"
-          >
-            新ゲーム
-          </button>
+          />
         </div>
 
         {/* この対戦を記録する（フェーズ2の核） */}
         <button
           onClick={openRecordFlow}
-          className="rounded-xl bg-[var(--accent)] py-3 text-base font-bold text-white active:opacity-80"
+          className="flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] py-3 text-base font-bold text-white shadow-lg shadow-[var(--accent)]/20 transition-transform active:scale-[0.98] active:opacity-90"
         >
-          🏁 {matchSession ? 'このゲームの結果を記録する' : 'この対戦を記録する'}
+          <Flag size={18} strokeWidth={2.25} />
+          {matchSession ? 'このゲームの結果を記録する' : 'この対戦を記録する'}
         </button>
       </div>
 
@@ -429,6 +489,7 @@ export function LiveScreen({
             onThePlay={onThePlay}
             mulligans={{ me: board.mulligans.me, opponent: board.mulligans.opponent }}
             players={board.players.map((p) => ({ name: p.name, life: p.life }))}
+            showLife={hasLifeCounter}
             onResult={handleGameResult}
           />
         )}
@@ -445,14 +506,14 @@ export function LiveScreen({
 }
 
 function ToolButton({
-  icon,
+  icon: Icon,
   label,
   badge,
   badgeOpponent,
   compact,
   onClick,
 }: {
-  icon: string
+  icon: IconComponent
   label: string
   badge?: number
   badgeOpponent?: number
@@ -463,22 +524,46 @@ function ToolButton({
     <button
       onClick={onClick}
       className={
-        'relative flex flex-col items-center gap-1 rounded-xl bg-white/10 active:bg-white/25 ' +
+        'relative flex flex-col items-center justify-center gap-1 rounded-2xl border border-white/10 bg-white/[0.06] shadow-sm shadow-black/20 transition-all active:scale-95 active:bg-white/15 ' +
         (compact ? 'py-3' : 'py-3.5')
       }
     >
-      <span className="text-3xl leading-none">{icon}</span>
-      {!compact && <span className="text-sm text-slate-300">{label}</span>}
+      <Icon size={compact ? 22 : 26} strokeWidth={1.75} className="text-slate-200" />
+      {!compact && <span className="text-xs font-medium text-slate-300">{label}</span>}
       {compact && !!badge && (
-        <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1 text-xs font-bold text-white">
+        <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1 text-[11px] font-bold text-white shadow">
           {badge}
         </span>
       )}
       {compact && !!badgeOpponent && (
-        <span className="absolute -left-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-xs font-bold text-white">
+        <span className="absolute -left-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-bold text-white shadow">
           {badgeOpponent}
         </span>
       )}
+    </button>
+  )
+}
+
+// ユーティリティ行（人数切替・Undo・新ゲーム）用の小さいアイコン+ラベルボタン。
+function UtilityButton({
+  icon: Icon,
+  label,
+  onClick,
+  disabled,
+}: {
+  icon: IconComponent
+  label: string
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-sm font-medium text-slate-300 transition-colors active:bg-white/15 disabled:opacity-40"
+    >
+      <Icon size={15} strokeWidth={2} />
+      {label}
     </button>
   )
 }

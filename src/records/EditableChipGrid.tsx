@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { Pencil, Check, X, Plus } from 'lucide-react'
 
 export interface ChipItem {
   id: string
@@ -50,12 +51,12 @@ function SortableChip({
         {...(editMode ? { ...attributes, ...listeners } : {})}
         onClick={onTap}
         className={
-          'rounded-lg px-3 py-1.5 text-sm ' +
+          'rounded-lg border px-3 py-1.5 text-sm transition-transform active:scale-95 ' +
           (editMode
-            ? 'touch-none select-none bg-white/10 text-slate-300'
+            ? 'touch-none select-none border-white/10 bg-white/10 text-slate-300'
             : selected
-              ? selectedClassName
-              : 'bg-white/10 text-slate-200 active:bg-white/20')
+              ? 'border-transparent ' + selectedClassName
+              : 'border-white/10 bg-white/[0.06] text-slate-200 active:bg-white/15')
         }
       >
         {item.name}
@@ -67,10 +68,10 @@ function SortableChip({
             e.stopPropagation()
             onDelete()
           }}
-          className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-xs leading-none text-white active:bg-rose-400"
+          className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white shadow active:bg-rose-400"
           aria-label={`${item.name}を削除`}
         >
-          ×
+          <X size={12} strokeWidth={3} />
         </button>
       )}
     </div>
@@ -144,10 +145,11 @@ export function EditableChipGrid({
           type="button"
           onClick={() => setEditMode((v) => !v)}
           className={
-            'rounded px-1.5 py-0.5 text-xs underline decoration-dotted underline-offset-2 ' +
+            'flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ' +
             (editMode ? 'text-emerald-400' : 'text-slate-500 active:text-slate-300')
           }
         >
+          {editMode ? <Check size={13} strokeWidth={2.5} /> : <Pencil size={13} strokeWidth={2} />}
           {editMode ? '完了' : '編集'}
         </button>
       </div>
@@ -186,13 +188,14 @@ export function EditableChipGrid({
             }
           }}
           placeholder={addPlaceholder}
-          className="flex-1 rounded-lg bg-white/10 px-3 py-1.5 text-sm text-white placeholder:text-slate-500"
+          className="flex-1 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-1.5 text-sm text-white placeholder:text-slate-500"
         />
         <button
           type="button"
           onClick={submitAdd}
-          className="rounded-lg bg-white/10 px-3 py-1.5 text-sm active:bg-white/20"
+          className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-1.5 text-sm transition-transform active:scale-95 active:bg-white/15"
         >
+          <Plus size={15} strokeWidth={2.5} />
           追加
         </button>
       </div>

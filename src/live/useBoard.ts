@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { GameProfile, LifeEvent } from '../db/types'
+import type { GameProfile, LifeEvent, CounterType } from '../db/types'
 import { newId, nowIso } from '../lib/id'
 
 // ライブ画面の「盤面」1ゲームぶんの状態。
@@ -9,6 +9,8 @@ export interface PlayerState {
   life: number
   // EDH: 各対戦相手（playerId）から受けた統率者ダメージ
   commanderDamage: Record<string, number>
+  // その他の自由カウンター（毒・エール等）。GameProfile.counterTypesのkeyごとに現在値を持つ。
+  counters: Record<string, number>
 }
 
 export interface Board {
@@ -17,24 +19,41 @@ export interface Board {
   lifeLog: LifeEvent[]
 }
 
-function makePlayers(count: number, startingLife: number): PlayerState[] {
+function makePlayers(count: number, startingLife: number, counterTypes: CounterType[]): PlayerState[] {
   const arr: PlayerState[] = []
   for (let i = 0; i < count; i++) {
+    const counters: Record<string, number> = {}
+    for (const c of counterTypes) counters[c.key] = c.defaultValue
     arr.push({
       id: newId(),
       name: i === 0 ? 'あなた' : count === 2 ? '相手' : `P${i + 1}`,
       life: startingLife,
       commanderDamage: {},
+      counters,
     })
   }
   return arr
 }
 
-function freshBoard(count: number, startingLife: number): Board {
+function freshBoard(count: number, startingLife: number, counterTypes: CounterType[]): Board {
   return {
-    players: makePlayers(count, startingLife),
+    players: makePlayers(count, startingLife, counterTypes),
     mulligans: { me: 0, opponent: 0 },
     lifeLog: [],
+  }
+}
+
+// スマホのlocalStorageに残っていた「前のバージョンで保存された盤面」を復元する時のための保険。
+// 機能追加でPlayerStateに新しい項目（counters等）が増えても、古いセッションにはまだ無いため、
+// 復元直後に読みに行くと undefined になりクラッシュしてしまう。復元のたびに必ず埋め直す。
+function normalizeBoard(board: Board): Board {
+  return {
+    ...board,
+    players: board.players.map((p) => ({
+      ...p,
+      commanderDamage: p.commanderDamage ?? {},
+      counters: p.counters ?? {},
+    })),
   }
 }
 
@@ -47,9 +66,12 @@ export function useBoard(
   restored?: { profileId: string; board: Board } | null,
 ) {
   const startingLife = profile?.startingLife ?? 20
+  const counterTypes = profile?.counterTypes ?? []
 
-  const [board, setBoard] = useState<Board>(
-    () => restored?.board ?? freshBoard(playerCount, startingLife),
+  const [board, setBoard] = useState<Board>(() =>
+    restored?.board
+      ? normalizeBoard(restored.board)
+      : freshBoard(playerCount, startingLife, counterTypes),
   )
   const [undoStack, setUndoStack] = useState<Board[]>([])
 
@@ -66,7 +88,7 @@ export function useBoard(
     if (sessionKey === null) return
     if (prevSessionKey.current === sessionKey) return
     prevSessionKey.current = sessionKey
-    setBoard(freshBoard(playerCount, startingLife))
+    setBoard(freshBoard(playerCount, startingLife, counterTypes))
     setUndoStack([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionKey, playerCount, startingLife])
@@ -136,6 +158,18 @@ export function useBoard(
     })
   }
 
+  // その他の自由カウンター（毒・エール等）を増減する。ライフのような下限0のクランプのみ。
+  function changeCounter(playerId: string, key: string, delta: number) {
+    if (delta === 0) return
+    mutate((b) => {
+      const p = b.players.find((x) => x.id === playerId)
+      if (!p) return
+      if (!p.counters) p.counters = {}
+      const cur = p.counters[key] ?? 0
+      p.counters[key] = Math.max(0, cur + delta)
+    })
+  }
+
   function undo() {
     setUndoStack((s) => {
       if (s.length === 0) return s
@@ -146,7 +180,7 @@ export function useBoard(
   }
 
   function reset() {
-    setBoard(freshBoard(playerCount, startingLife))
+    setBoard(freshBoard(playerCount, startingLife, counterTypes))
     setUndoStack([])
   }
 
@@ -160,6 +194,7 @@ export function useBoard(
       setLife,
       addCommanderDamage,
       changeMulligan,
+      changeCounter,
       undo,
       reset,
     }),

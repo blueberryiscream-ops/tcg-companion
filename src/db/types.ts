@@ -2,6 +2,7 @@
 // IndexedDB に保存する型の定義。ID は UUID 文字列、日時は ISO8601 文字列。
 
 export type DieType = 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20' | 'd100'
+export const ALL_DICE_TYPES: DieType[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100']
 
 export interface CounterType {
   key: string
@@ -14,10 +15,11 @@ export interface CounterType {
 export interface GameProfile {
   id: string
   name: string
+  hasLifeCounter?: boolean // ライフの数字を対戦画面に出すか。未設定はtrue扱い（既存プロファイルとの互換のため）
   startingLife: number
   playerCountDefault: number
   supportsCommanderDamage: boolean
-  counterTypes: CounterType[]
+  counterTypes: CounterType[] // その他の自由カウンター（毒・エール等）。対戦画面で+/-できる実際の機能
   diceDefaults: DieType[]
   isBuiltIn: boolean
   accentColor?: string // '#rrggbb'。ゲーム別テーマの基準色（未設定は既定色にフォールバック）

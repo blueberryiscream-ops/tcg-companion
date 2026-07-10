@@ -223,3 +223,8 @@ export async function getLastMatch(gameProfileId: string): Promise<Match | null>
   const all = await listAllMatches(gameProfileId)
   return all[0] ?? null
 }
+
+// 全ゲーム合計の対戦数（未バックアップ促しの表示要否の判定に使う。プロファイルを問わない）。
+export async function countAllMatches(): Promise<number> {
+  return db.matches.count()
+}

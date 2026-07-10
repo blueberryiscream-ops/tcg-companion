@@ -1,3 +1,4 @@
+import { Layers } from 'lucide-react'
 import type { Deck } from '../db/types'
 import { renameDeck, deleteDeck, reorderDecks } from '../db/repo'
 import { EditableChipGrid } from './EditableChipGrid'
@@ -27,7 +28,10 @@ export function DeckPicker({
 
   return (
     <div>
-      <div className="mb-1 text-xs text-slate-400">{label}</div>
+      <div className="mb-1 flex items-center gap-1 text-xs text-slate-400">
+        <Layers size={12} strokeWidth={2} />
+        {label}
+      </div>
       <EditableChipGrid
         items={decks}
         selectedIds={selectedIds}

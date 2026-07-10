@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { X } from 'lucide-react'
 
 // 画面中央に出る小窓（モーダル）。対面で使うので、相手からも結果が見えるよう中央に置く。
 export function Sheet({
@@ -25,9 +26,10 @@ export function Sheet({
           <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
           <button
             onClick={onClose}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm text-slate-200 active:bg-white/20"
+            className="flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.06] p-1.5 text-slate-300 transition-transform active:scale-95 active:bg-white/15"
+            aria-label="閉じる"
           >
-            閉じる
+            <X size={16} strokeWidth={2} />
           </button>
         </div>
         {children}

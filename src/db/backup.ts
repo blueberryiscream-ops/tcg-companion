@@ -1,5 +1,6 @@
 import { db } from './db'
 import { nowIso } from '../lib/id'
+import { recordBackupNow } from '../lib/backupReminder'
 import type { GameProfile, Deck, Match, GameRecord, TagItem, PlayerItem } from './types'
 
 // ===== バックアップ（全データのJSON書き出し/読み込み） =====
@@ -54,6 +55,7 @@ export async function exportBackup(): Promise<void> {
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
+  recordBackupNow()
 }
 
 export interface ImportResult {

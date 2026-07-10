@@ -1,5 +1,13 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import {
+  Download,
+  ArrowUpDown,
+  ChevronDown,
+  ClipboardList,
+  Tag as TagIcon,
+  User,
+} from 'lucide-react'
 import type { GameProfile } from '../db/types'
 import {
   listAllMatches,
@@ -31,6 +39,22 @@ const RESULT_COLOR: Record<string, string> = {
 
 function pct(rate: number): string {
   return Math.round(rate * 100) + '%'
+}
+
+// select要素に共通のスタイルを当てるための小さなラッパー（下向き矢印アイコン付き）。
+function FilterSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <div className="relative min-w-0 flex-1">
+      <select
+        {...props}
+        className="w-full appearance-none rounded-lg border border-white/10 bg-white/[0.06] px-2 py-1.5 pr-7 text-sm text-white"
+      />
+      <ChevronDown
+        size={14}
+        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-500"
+      />
+    </div>
+  )
 }
 
 export function RecordsScreen({
@@ -129,68 +153,52 @@ export function RecordsScreen({
       <p className="mb-3 text-sm text-slate-400">{profile.name} の対戦</p>
 
       {/* フィルタ（設定タブで表示をオフにした項目は出さない） */}
-      <div className="mb-3 flex flex-col gap-2 rounded-xl bg-white/5 p-3">
+      <div className="mb-3 flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.05] p-3">
         {(prefs.showMyDeck || prefs.showOpponentDeck) && (
           <div className="flex gap-2">
             {prefs.showMyDeck && (
-              <select
-                value={filterMyDeckId}
-                onChange={(e) => setFilterMyDeckId(e.target.value)}
-                className="min-w-0 flex-1 rounded-lg bg-white/10 px-2 py-1.5 text-sm text-white"
-              >
+              <FilterSelect value={filterMyDeckId} onChange={(e) => setFilterMyDeckId(e.target.value)}>
                 <option value="all">自分デッキ: すべて</option>
                 {(myDecks ?? []).map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
                   </option>
                 ))}
-              </select>
+              </FilterSelect>
             )}
             {prefs.showOpponentDeck && (
-              <select
-                value={filterDeckId}
-                onChange={(e) => setFilterDeckId(e.target.value)}
-                className="min-w-0 flex-1 rounded-lg bg-white/10 px-2 py-1.5 text-sm text-white"
-              >
+              <FilterSelect value={filterDeckId} onChange={(e) => setFilterDeckId(e.target.value)}>
                 <option value="all">対面デッキ: すべて</option>
                 {(opponentDecks ?? []).map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
                   </option>
                 ))}
-              </select>
+              </FilterSelect>
             )}
           </div>
         )}
         {(prefs.showTags || prefs.showOpponentPlayer) && (
           <div className="flex gap-2">
             {prefs.showTags && (
-              <select
-                value={filterTag}
-                onChange={(e) => setFilterTag(e.target.value)}
-                className="min-w-0 flex-1 rounded-lg bg-white/10 px-2 py-1.5 text-sm text-white"
-              >
+              <FilterSelect value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
                 <option value="all">タグ: すべて</option>
                 {(pastTags ?? []).map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
                 ))}
-              </select>
+              </FilterSelect>
             )}
             {prefs.showOpponentPlayer && (
-              <select
-                value={filterPlayerId}
-                onChange={(e) => setFilterPlayerId(e.target.value)}
-                className="min-w-0 flex-1 rounded-lg bg-white/10 px-2 py-1.5 text-sm text-white"
-              >
+              <FilterSelect value={filterPlayerId} onChange={(e) => setFilterPlayerId(e.target.value)}>
                 <option value="all">対面プレイヤー: すべて</option>
                 {(players ?? []).map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
                 ))}
-              </select>
+              </FilterSelect>
             )}
           </div>
         )}
@@ -199,36 +207,39 @@ export function RecordsScreen({
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg bg-white/10 px-2 py-1.5 text-sm text-white"
+            className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/[0.06] px-2 py-1.5 text-sm text-white"
           />
           <span className="text-xs text-slate-500">〜</span>
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg bg-white/10 px-2 py-1.5 text-sm text-white"
+            className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/[0.06] px-2 py-1.5 text-sm text-white"
           />
         </div>
         <div className="flex items-center justify-between">
           <button
             onClick={() => setOldestFirst((v) => !v)}
-            className="rounded-lg bg-white/10 px-3 py-1.5 text-xs text-slate-300 active:bg-white/20"
+            className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs text-slate-300 transition-transform active:scale-95 active:bg-white/15"
           >
+            <ArrowUpDown size={13} strokeWidth={2} />
             並び順: {oldestFirst ? '古い順' : '新しい順'}
           </button>
           <button
             onClick={handleExportCsv}
             disabled={filteredGames.length === 0}
-            className="rounded-lg bg-white/10 px-3 py-1.5 text-xs text-slate-300 active:bg-white/20 disabled:opacity-40"
+            className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs text-slate-300 transition-transform active:scale-95 active:bg-white/15 disabled:opacity-40"
           >
-            ⬇ CSV書き出し（表示中の{filteredMatches.length}件）
+            <Download size={13} strokeWidth={2} />
+            CSV書き出し（{filteredMatches.length}件）
           </button>
         </div>
       </div>
 
       {/* 分析サマリー */}
       {filteredMatches.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-white/15 p-6 text-center text-slate-500">
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-white/15 p-6 text-center text-slate-500">
+          <ClipboardList size={28} strokeWidth={1.5} className="text-slate-600" />
           {(allMatches ?? []).length === 0 ? (
             <>
               まだ記録はありません。
@@ -240,7 +251,7 @@ export function RecordsScreen({
           )}
         </div>
       ) : (
-        <div className="mb-3 rounded-xl bg-white/5 p-3">
+        <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-3xl font-bold tabular-nums text-[var(--accent)]">{pct(overall.winRate)}</div>
@@ -250,9 +261,13 @@ export function RecordsScreen({
             </div>
             <button
               onClick={() => setShowAnalysis((v) => !v)}
-              className="rounded-lg bg-white/10 px-3 py-1.5 text-xs text-slate-300 active:bg-white/20"
+              className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs text-slate-300 transition-transform active:scale-95 active:bg-white/15"
             >
               {showAnalysis ? '詳細を隠す' : '詳細を見る'}
+              <ChevronDown
+                size={13}
+                className={'transition-transform ' + (showAnalysis ? 'rotate-180' : '')}
+              />
             </button>
           </div>
 
@@ -346,15 +361,19 @@ export function RecordsScreen({
             .sort((a, b) => a.gameIndex - b.gameIndex)
           const expanded = expandedMatchId === m.id
           return (
-            <div key={m.id} className="rounded-xl bg-white/5 p-3">
+            <div key={m.id} className="rounded-xl border border-white/10 bg-white/[0.05] p-3">
               <button
                 className="flex w-full items-center justify-between text-left"
                 onClick={() => setExpandedMatchId(expanded ? null : m.id)}
               >
-                <span className="text-sm text-slate-400">
+                <span className="flex items-center gap-1.5 text-sm text-slate-400">
                   {m.date}
                   {m.format && ` ・${m.format}`}
                   {games.length > 0 && ` ・${games.length}ゲーム`}
+                  <ChevronDown
+                    size={13}
+                    className={'shrink-0 text-slate-600 transition-transform ' + (expanded ? 'rotate-180' : '')}
+                  />
                 </span>
                 <span className={'rounded px-2 py-0.5 text-sm font-semibold ' + RESULT_COLOR[m.result]}>
                   {RESULT_LABEL[m.result]}
@@ -372,12 +391,14 @@ export function RecordsScreen({
                 </div>
               )}
               {(m.opponentPlayerIds ?? []).length > 0 && (
-                <div className="mt-1 text-xs text-amber-300">
+                <div className="mt-1 flex items-center gap-1 text-xs text-amber-300">
+                  <User size={12} strokeWidth={2} />
                   対 {(m.opponentPlayerIds ?? []).map((id) => playerNames?.[id] ?? '?').join('・')}
                 </div>
               )}
               {m.tags.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1">
+                <div className="mt-1 flex flex-wrap items-center gap-1">
+                  <TagIcon size={12} strokeWidth={2} className="text-slate-600" />
                   {m.tags.map((t) => (
                     <span key={t} className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-slate-400">
                       {t}
@@ -390,7 +411,10 @@ export function RecordsScreen({
               {expanded && games.length > 0 && (
                 <div className="mt-2 flex flex-col gap-1.5 border-t border-white/10 pt-2">
                   {games.map((g) => (
-                    <div key={g.id} className="rounded-lg bg-white/5 px-2 py-1.5 text-xs text-slate-300">
+                    <div
+                      key={g.id}
+                      className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-slate-300"
+                    >
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">第{g.gameIndex}ゲーム</span>
                         <span className={g.result ? RESULT_COLOR[g.result] + ' rounded px-1.5' : ''}>

@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { ImagePlus, Trash2 } from 'lucide-react'
 import { setWallpaper, clearWallpaper } from '../db/wallpaper'
 import { useWallpaperUrl } from '../live/useWallpaperUrl'
 
@@ -31,23 +32,24 @@ export function WallpaperSection({
       <div className="flex items-center gap-3">
         {url && (
           <div
-            className="h-14 w-14 shrink-0 rounded-lg bg-cover bg-center"
+            className="h-14 w-14 shrink-0 rounded-lg border border-white/10 bg-cover bg-center"
             style={{ backgroundImage: `url(${url})` }}
           />
         )}
         <div className="flex flex-1 gap-2">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-slate-200 active:bg-white/20"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-sm text-slate-200 transition-transform active:scale-[0.98] active:bg-white/15"
           >
-            🖼 {url ? '画像を変更' : '画像を選ぶ'}
+            <ImagePlus size={16} strokeWidth={1.75} />
+            {url ? '画像を変更' : '画像を選ぶ'}
           </button>
           {url && (
             <button
               onClick={() => clearWallpaper(id)}
-              className="rounded-lg bg-white/10 px-3 py-2 text-sm text-rose-300 active:bg-white/20"
+              className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-sm text-rose-300 transition-transform active:scale-[0.98] active:bg-white/15"
             >
-              消す
+              <Trash2 size={16} strokeWidth={1.75} />
             </button>
           )}
         </div>

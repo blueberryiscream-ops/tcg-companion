@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Repeat, X, Check } from 'lucide-react'
 import type { GameProfile, Match } from '../db/types'
 import { listDecks, listPlayers, createDeck, createPlayer, getLastMatch } from '../db/repo'
 import { DeckPicker } from './DeckPicker'
@@ -107,9 +108,10 @@ export function MatchSetupForm({
           <button
             type="button"
             onClick={handleRematch}
-            className="rounded-xl bg-violet-600 py-3 text-base font-bold text-white active:bg-violet-500"
+            className="flex items-center justify-center gap-2 rounded-xl bg-violet-600 py-3 text-base font-bold text-white transition-transform active:scale-[0.98] active:bg-violet-500"
           >
-            🔁 前回と同じ設定で連戦{lastOpponentLabel && `（対 ${lastOpponentLabel}）`}
+            <Repeat size={18} strokeWidth={2} />
+            前回と同じ設定で連戦{lastOpponentLabel && `（対 ${lastOpponentLabel}）`}
           </button>
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <div className="h-px flex-1 bg-white/10" />
@@ -125,7 +127,7 @@ export function MatchSetupForm({
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="rounded-lg bg-white/10 px-3 py-1.5 text-white"
+          className="rounded-lg border border-white/10 bg-white/[0.06] px-3 py-1.5 text-white"
         />
       </div>
 
@@ -139,8 +141,10 @@ export function MatchSetupForm({
                 type="button"
                 onClick={() => setFormat(f)}
                 className={
-                  'flex-1 rounded-lg py-2 text-sm font-semibold ' +
-                  (format === f ? 'bg-[var(--accent)] text-white' : 'bg-white/10 text-slate-200')
+                  'flex-1 rounded-lg border py-2 text-sm font-semibold transition-transform active:scale-95 ' +
+                  (format === f
+                    ? 'border-transparent bg-[var(--accent)] text-white'
+                    : 'border-white/10 bg-white/[0.06] text-slate-200')
                 }
               >
                 {f}
@@ -188,7 +192,7 @@ export function MatchSetupForm({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={2}
-            className="w-full rounded-lg bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500"
+            className="w-full rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-sm text-white placeholder:text-slate-500"
             placeholder="自由入力"
           />
         </div>
@@ -198,8 +202,9 @@ export function MatchSetupForm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 rounded-xl bg-white/10 py-3 font-semibold active:bg-white/20"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.06] py-3 font-semibold transition-transform active:scale-[0.98] active:bg-white/15"
         >
+          <X size={16} strokeWidth={2} />
           やめる
         </button>
         <button
@@ -207,8 +212,9 @@ export function MatchSetupForm({
           onClick={() =>
             onSubmit({ date, tags, myDeckId, opponentDeckIds, opponentPlayerIds, format, note })
           }
-          className="flex-1 rounded-xl bg-emerald-500 py-3 font-bold text-black active:bg-emerald-400"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-3 font-bold text-black transition-transform active:scale-[0.98] active:bg-emerald-400"
         >
+          <Check size={16} strokeWidth={2.5} />
           記録を開始
         </button>
       </div>

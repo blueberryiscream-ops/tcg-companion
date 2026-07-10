@@ -1,3 +1,4 @@
+import { Users } from 'lucide-react'
 import type { PlayerItem } from '../db/types'
 import { renamePlayer, deletePlayer, reorderPlayers } from '../db/repo'
 import { EditableChipGrid } from './EditableChipGrid'
@@ -27,7 +28,10 @@ export function PlayerPicker({
 
   return (
     <div>
-      <div className="mb-1 text-xs text-slate-400">{label}</div>
+      <div className="mb-1 flex items-center gap-1 text-xs text-slate-400">
+        <Users size={12} strokeWidth={2} />
+        {label}
+      </div>
       <EditableChipGrid
         items={players}
         selectedIds={selectedIds}

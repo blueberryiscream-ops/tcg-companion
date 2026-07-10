@@ -1,3 +1,4 @@
+import { Check, Minus, X } from 'lucide-react'
 import type { Match } from '../db/types'
 
 // 1ゲームぶんの結果入力。先後・マリガン・ライフは盤面から自動で埋まった値を表示するだけ
@@ -10,6 +11,7 @@ export function GameResultForm({
   onThePlay,
   mulligans,
   players,
+  showLife = true,
   onResult,
 }: {
   gameIndex: number
@@ -18,6 +20,7 @@ export function GameResultForm({
   onThePlay: 'me' | 'opponent' | null
   mulligans: { me: number; opponent: number }
   players: { name: string; life: number }[]
+  showLife?: boolean
   onResult: (result: 'win' | 'lose' | 'draw') => void
 }) {
   const showTally = format === 'BO3' || format === 'BO5'
@@ -33,32 +36,37 @@ export function GameResultForm({
         )}
       </div>
 
-      <div className="rounded-xl bg-white/5 p-3 text-sm text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.05] p-3 text-sm text-slate-300">
         <div>先手: {onThePlay === 'me' ? 'あなた' : onThePlay === 'opponent' ? '相手' : '未決定'}</div>
         <div>
           マリガン: あなた {mulligans.me} / 相手 {mulligans.opponent}
         </div>
-        <div>ライフ（この時点）: {players.map((p) => `${p.name} ${p.life}`).join(' / ')}</div>
+        {showLife && (
+          <div>ライフ（この時点）: {players.map((p) => `${p.name} ${p.life}`).join(' / ')}</div>
+        )}
       </div>
 
       <div className="text-center text-sm text-slate-400">このゲームの結果は？</div>
       <div className="flex gap-2">
         <button
           onClick={() => onResult('win')}
-          className="flex-1 rounded-xl bg-emerald-500 py-5 text-lg font-bold text-black active:bg-emerald-400"
+          className="flex flex-1 flex-col items-center gap-1 rounded-xl bg-emerald-500 py-5 text-lg font-bold text-black transition-transform active:scale-[0.97] active:bg-emerald-400"
         >
+          <Check size={22} strokeWidth={2.5} />
           勝ち
         </button>
         <button
           onClick={() => onResult('draw')}
-          className="flex-1 rounded-xl bg-white/10 py-5 text-lg font-bold text-slate-200 active:bg-white/20"
+          className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/[0.08] py-5 text-lg font-bold text-slate-200 transition-transform active:scale-[0.97] active:bg-white/15"
         >
+          <Minus size={22} strokeWidth={2.5} />
           引き分け
         </button>
         <button
           onClick={() => onResult('lose')}
-          className="flex-1 rounded-xl bg-rose-500 py-5 text-lg font-bold text-white active:bg-rose-400"
+          className="flex flex-1 flex-col items-center gap-1 rounded-xl bg-rose-500 py-5 text-lg font-bold text-white transition-transform active:scale-[0.97] active:bg-rose-400"
         >
+          <X size={22} strokeWidth={2.5} />
           負け
         </button>
       </div>
